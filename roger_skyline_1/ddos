@@ -1,0 +1,57 @@
+Суть скрипта такова, что через определенное время кроном запускается скрипт и проверяет все соединения с сервером, 
+ip и кол-во их соединений которые записываются в файл. Потом запускается другой скрипт, который смотрит, если соединения, 
+превышают заданное число (у меня стоит 20), то создается скрипт с блокировкой этих айпишников через iptables.
+
+mkdir usr/adespina/ddos && cd ddos && touch ddos.sh
+chmod 0755 /usr/adespina/ddos/ddos.sh
+
+#!/bin/bash
+
+# находим все соединения и записываем их во временный файл ddos.iplist в каталоге tmp
+netstat -ntu | awk '{print $5}' | cut -d: -f1 | sort | uniq -c | sort -n > /tmp/ddos.iplist
+
+# очищаем скрипт бана айпишников
+cat /dev/null > /tmp/iptables_ban.sh
+
+# создаем DROP правила для 50 самых агрессивных ботов
+awk '{if ($1 > 20) {print "/sbin/iptables -I INPUT -p tcp --dport 80 -s " $2 " -j DROP" }}' /tmp/ddos.iplist >> /tmp/iptables_ban.sh
+
+# следующая строка нужна только для того, чтобы создавался файл с просмотром всех правил iptables
+echo "/sbin/iptables -L INPUT -v -n > /tmp/iptables.log" >> /tmp/iptables_ban.sh
+
+# запускаем скрипт бана айпишников
+bash /tmp/iptables_ban.sh
+
+# делаем ротацию лога
+cat /dev/null > /var/log/ddos/error.log
+[ ! -f /var/run/nginx.pid ] || kill -USR1 `cat /var/run/nginx.pid`
+
+vim /etc/crontab
+*/10 * * * * root bash /usr/home/adespina/ddos/ddos.sh
+
+Также я изменил ротацию логов в файле /etc/logrotate.d/nginx от nginx`a, чтобы многогиговые файлы не создавались
+
+/var/log/nginx/*.log {
+	daily
+	size 20M
+	missingok
+	rotate 150
+	compress
+	delaycompress
+	notifempty
+	create 640 root adm
+	sharedscripts
+	postrotate
+		[ ! -f /var/run/nginx.pid ] || kill -USR1 `cat /var/run/nginx.pid`
+	endscript
+}
+
+и записал еще задачу в крон, выполняющуюся каждый час
+
+0 4 * * * /sbin/reboot
+
+общий список заданий, выведенный через crontab -l:
+
+*/10 * * * * root bash /usr/home/adespina/ddos/ddos.sh
+0 * * * * root /usr/sbin/logrotate /etc/logrotate.conf
+0 4 * * * root /sbin/reboot

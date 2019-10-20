@@ -1,0 +1,8 @@
+#!/bin/sh
+apt updtate -y && apt upgrade -y
+apt install -y sudo && apt install -y vim
+apt install -y portcentry && apt install -y ssmtp
+apt install -y cron && apt install -y crontab
+apt install -y nmap && apt install -y nginx
+mkdir scripts && cd scripts && touch update_script.sh && touch modif_cron.sh
+#netstat -na | grep :80 | wc -l (for DDos)
