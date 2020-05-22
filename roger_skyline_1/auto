@@ -1,6 +1,6 @@
 #!/bin/bash
-apt-get install git -y
+apt install git -y
 git clone https://github.com/therealadespina/Total.git/Total.git
 cp /home/ad/Total/index.html /var/www/example.com/html
 rm -rf /home/ad/Total
-apt-get remove git -y
+apt remove git -y
